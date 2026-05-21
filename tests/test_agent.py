@@ -8,10 +8,7 @@ import os
 # 添加父目录到路径
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from agent import Agent
-from message import Message
-from my_llm import MyLLM
-from config import Config
+from hello_agents import Agent, Message, MyLLM, Config
 
 
 class SimpleAgent(Agent):

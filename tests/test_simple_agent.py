@@ -6,9 +6,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from dotenv import load_dotenv
-from my_llm import MyLLM
-from tool_registry import ToolRegistry, CalculatorTool
-from my_simple_agent import MySimpleAgent
+from hello_agents import MyLLM, ToolRegistry, CalculatorTool, MySimpleAgent
 
 # 加载环境变量
 load_dotenv()

@@ -1,4 +1,4 @@
-from llm_client import HelloAgentsLLM
+from .llm_client import HelloAgentsLLM
 
 
 class MyLLM(HelloAgentsLLM):

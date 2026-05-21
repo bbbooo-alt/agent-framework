@@ -2,10 +2,10 @@
 from typing import Optional, Any, List, Dict
 import re
 
-from simple_agent import SimpleAgent
-from message import Message
-from llm_client import HelloAgentsLLM
-from config import Config
+from .simple_agent import SimpleAgent
+from ..core.message import Message
+from ..core.llm_client import HelloAgentsLLM
+from ..core.config import Config
 
 
 class MySimpleAgent(SimpleAgent):

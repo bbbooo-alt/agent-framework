@@ -1,9 +1,9 @@
 """SimpleAgent - 基础对话Agent实现"""
 from typing import Optional, Any, List, Dict
-from agent import Agent
-from message import Message
-from llm_client import HelloAgentsLLM
-from config import Config
+from .agent import Agent
+from ..core.message import Message
+from ..core.llm_client import HelloAgentsLLM
+from ..core.config import Config
 
 
 class SimpleAgent(Agent):
