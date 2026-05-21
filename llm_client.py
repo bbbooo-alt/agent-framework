@@ -11,6 +11,7 @@ class HelloAgentsLLM:
     """
     为本书 "Hello Agents" 定制的LLM客户端。
     它用于调用任何兼容OpenAI接口的服务，并默认使用流式响应。
+    支持自动检测服务商配置。
     """
 
     # 厂商配置字典：封装各厂商的默认配置（模型、地址、环境变量名）
@@ -39,15 +40,85 @@ class HelloAgentsLLM:
             "base_url": "https://api.deepseek.com",
             "model": "deepseek-chat",
             "env_key": "DEEPSEEK_API_KEY"
+        },
+        "zhipu": {
+            "base_url": "https://open.bigmodel.cn/api/paas/v4",
+            "model": "glm-4",
+            "env_key": "ZHIPU_API_KEY"
+        },
+        "ollama": {
+            "base_url": "http://localhost:11434/v1",
+            "model": "qwen:0.5b",
+            "env_key": "OLLAMA_API_KEY"
+        },
+        "vllm": {
+            "base_url": "http://localhost:8000/v1",
+            "model": "Qwen/Qwen1.5-0.5B-Chat",
+            "env_key": "VLLM_API_KEY"
         }
     }
+
+    # 域名匹配规则：用于自动检测服务商
+    DOMAIN_PATTERNS = {
+        "modelscope": ["api-inference.modelscope.cn"],
+        "openai": ["api.openai.com"],
+        "aliyun": ["dashscope.aliyuncs.com"],
+        "deepseek": ["api.deepseek.com"],
+        "zhipu": ["open.bigmodel.cn"],
+        "longcat": ["api.longcat.chat"]
+    }
+
+    # 端口匹配规则：用于自动检测本地服务
+    PORT_PATTERNS = {
+        "ollama": [":11434"],
+        "vllm": [":8000", ":8001"]
+    }
+
+    @classmethod
+    def auto_detect_provider(cls) -> Optional[str]:
+        """
+        自动检测服务商配置
+        
+        优先级：
+        1. 检查特定服务商的环境变量
+        2. 根据 LLM_BASE_URL 进行域名匹配
+        3. 根据 LLM_BASE_URL 进行端口匹配
+        
+        Returns:
+            检测到的服务商名称，如果无法检测则返回 None
+        """
+        # 优先级1：检查特定服务商的环境变量
+        for provider, config in cls.PROVIDERS.items():
+            env_key = config.get("env_key")
+            if env_key and os.getenv(env_key):
+                print(f"🔍 自动检测：发现环境变量 {env_key}，使用服务商 '{provider}'")
+                return provider
+        
+        # 优先级2：根据 base_url 进行判断
+        base_url = os.getenv("LLM_BASE_URL")
+        if base_url:
+            # 域名匹配
+            for provider, domains in cls.DOMAIN_PATTERNS.items():
+                for domain in domains:
+                    if domain in base_url:
+                        print(f"🔍 自动检测：根据域名匹配到服务商 '{provider}'")
+                        return provider
+            
+            # 端口匹配
+            for provider, ports in cls.PORT_PATTERNS.items():
+                for port in ports:
+                    if port in base_url:
+                        print(f"🔍 自动检测：根据端口 {port} 匹配到本地服务 '{provider}'")
+                        return provider
+        
+        return None
 
     def __init__(
         self,
         model: str = None,
         apiKey: str = None,
         baseUrl: str = None,
-        provider: str = "longcat",
+        provider: str = None,
         timeout: int = None
     ):
         """
@@ -57,17 +128,27 @@ class HelloAgentsLLM:
             model: 模型名称，如果不传则使用厂商默认模型
             apiKey: API密钥，如果不传则从环境变量读取
             baseUrl: 基础URL，如果不传则使用厂商默认地址
-            provider: 厂商名称，支持 longcat/openai/modelscope/aliyun/deepseek
+            provider: 厂商名称，如果不传则自动检测
             timeout: 超时时间（秒）
         """
+        # 如果没有指定 provider，尝试自动检测
+        if provider is None:
+            detected_provider = self.auto_detect_provider()
+            if detected_provider:
+                provider = detected_provider
+            else:
+                # 默认使用 longcat
+                provider = "longcat"
+                print(f"⚠️ 无法自动检测服务商，使用默认: {provider}")
+        
         # 检查是否为已知的厂商
         if provider and provider in self.PROVIDERS:
             config = self.PROVIDERS[provider]
 
             # 按优先级获取参数：传入参数 > 环境变量 > 厂商默认
             apiKey = apiKey or os.getenv(config["env_key"])
-            baseUrl = baseUrl or config["base_url"]
-            model = model or config["model"]
+            baseUrl = baseUrl or os.getenv("LLM_BASE_URL") or config["base_url"]
+            model = model or os.getenv("LLM_MODEL_ID") or config["model"]
 
             # 保存厂商信息
             self.provider = provider
@@ -128,26 +209,3 @@ class HelloAgentsLLM:
             "model": self.model,
             "base_url": self.client.base_url if hasattr(self, 'client') else None
         }
-
-
-# --- 客户端使用示例 ---
-if __name__ == '__main__':
-    try:
-        # 使用 provider 参数快速切换厂商
-        llmClient = HelloAgentsLLM(provider="longcat")
-
-        print(f"当前配置: {llmClient.get_provider_info()}")
-
-        exampleMessages = [
-            {"role": "system", "content": "You are a helpful assistant that writes Python code."},
-            {"role": "user", "content": "写一个快速排序算法"}
-        ]
-
-        print("\n--- 调用LLM ---")
-        responseText = llmClient.think(exampleMessages)
-        if responseText:
-            print("\n\n--- 完整模型响应 ---")
-            print(responseText)
-
-    except ValueError as e:
-        print(e)
