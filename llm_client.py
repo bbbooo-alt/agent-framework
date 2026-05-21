@@ -1,7 +1,7 @@
 import os
 from openai import OpenAI
 from dotenv import load_dotenv
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 # 加载 .env 文件中的环境变量
 load_dotenv()
@@ -173,15 +173,36 @@ class HelloAgentsLLM:
         self.model = model
         self.client = OpenAI(api_key=apiKey, base_url=baseUrl, timeout=timeout)
 
-    def think(self, messages: List[Dict[str, str]], temperature: float = 0) -> str:
+    def think(
+        self,
+        messages: Union[List[Dict[str, str]], List["Message"]],
+        temperature: float = 0
+    ) -> str:
         """
         调用大语言模型进行思考，并返回其响应。
+
+        Args:
+            messages: 消息列表，可以是字典列表或 Message 对象列表
+            temperature: 温度参数，控制生成文本的随机性
+        
+        Returns:
+            模型的响应文本
         """
+        # 转换 Message 对象为字典格式
+        formatted_messages = []
+        for msg in messages:
+            if hasattr(msg, 'to_dict'):
+                # Message 对象
+                formatted_messages.append(msg.to_dict())
+            else:
+                # 字典格式
+                formatted_messages.append(msg)
+        
         print(f"🧠 正在调用 {self.model} 模型...")
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
-                messages=messages,
+                messages=formatted_messages,
                 temperature=temperature,
                 stream=True,
             )
